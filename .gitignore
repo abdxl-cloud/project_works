@@ -1,0 +1,43 @@
+# Virtual environment
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large data files
+*.dat
+*.pdf
+
+# Experiment data (optional - uncomment if you want to exclude)
+# experiment_data/
+
+# Python cache
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.venv
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
