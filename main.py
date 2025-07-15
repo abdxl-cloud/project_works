@@ -381,6 +381,44 @@ class GazeTrackingExperiment:
         
         return (gaze_x, gaze_y)
     
+    def map_gaze_to_screen(self, gaze_x, gaze_y, calibration_data):
+        """Map relative gaze coordinates to screen coordinates using calibration data"""
+        if not calibration_data or len(calibration_data) < 3:
+            # Fallback: simple scaling (not accurate but prevents huge errors)
+            # Scale gaze coordinates to reasonable screen range
+            scale_factor = 5.0  # Adjust based on typical gaze range
+            screen_x = self.screen_width // 2 + gaze_x * scale_factor
+            screen_y = self.screen_height // 2 + gaze_y * scale_factor
+            return (screen_x, screen_y)
+        
+        # Use calibration data to create a mapping
+        # Simple linear interpolation based on nearest calibration points
+        min_distance = float('inf')
+        closest_point = None
+        
+        for cal_point in calibration_data:
+            if 'gaze_x' in cal_point and 'gaze_y' in cal_point:
+                distance = math.sqrt((gaze_x - cal_point['gaze_x'])**2 + 
+                                   (gaze_y - cal_point['gaze_y'])**2)
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_point = cal_point
+        
+        if closest_point:
+            # Simple offset-based mapping using closest calibration point
+            gaze_offset_x = gaze_x - closest_point['gaze_x']
+            gaze_offset_y = gaze_y - closest_point['gaze_y']
+            
+            # Scale the offset (this is a simplified approach)
+            scale_factor = 3.0
+            screen_x = closest_point['target_x'] + gaze_offset_x * scale_factor
+            screen_y = closest_point['target_y'] + gaze_offset_y * scale_factor
+            
+            return (screen_x, screen_y)
+        
+        # Fallback if no valid calibration data
+        return (self.screen_width // 2, self.screen_height // 2)
+    
     def run_calibration(self, cap, points):
         """Run calibration phase - captures when gaze is detected"""
         print(f"Starting calibration with {len(points)} points")
@@ -923,15 +961,35 @@ class GazeTrackingExperiment:
                 avg_gaze_x = sum(m[0] for m in recent_measurements) / len(recent_measurements)
                 avg_gaze_y = sum(m[1] for m in recent_measurements) / len(recent_measurements)
                 
-                # Calculate error (simplified - you might want to improve this)
-                error = math.sqrt((avg_gaze_x - (target_x - self.screen_width//2))**2 + 
-                                (avg_gaze_y - (target_y - self.screen_height//2))**2)
+                # Map gaze coordinates to screen coordinates using calibration data
+                estimated_screen_x, estimated_screen_y = self.map_gaze_to_screen(
+                    avg_gaze_x, avg_gaze_y, cal_data)
+                
+                # Calculate angular error in degrees
+                # Assume typical viewing distance of 60cm and screen size
+                viewing_distance_cm = 60
+                screen_width_cm = 30  # Approximate for typical monitor
+                screen_height_cm = 20
+                
+                # Convert pixel differences to cm
+                pixels_per_cm_x = self.screen_width / screen_width_cm
+                pixels_per_cm_y = self.screen_height / screen_height_cm
+                
+                # Calculate error in pixels, then convert to cm
+                error_pixels = math.sqrt((estimated_screen_x - target_x)**2 + 
+                                       (estimated_screen_y - target_y)**2)
+                error_cm = error_pixels / ((pixels_per_cm_x + pixels_per_cm_y) / 2)
+                
+                # Convert to angular error in degrees
+                error = math.degrees(math.atan(error_cm / viewing_distance_cm))
                 
                 validation_data.append({
                     'target_x': target_x,
                     'target_y': target_y,
                     'estimated_gaze_x': avg_gaze_x,
                     'estimated_gaze_y': avg_gaze_y,
+                    'estimated_screen_x': estimated_screen_x,
+                    'estimated_screen_y': estimated_screen_y,
                     'error': error,
                     'num_measurements': len(recent_measurements)
                 })
