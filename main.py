@@ -51,21 +51,34 @@ class GazeTrackingExperiment:
 
     def _generate_test_conditions(self):
         """Generate test conditions based on actual camera capabilities
-        Only using camera's default parameters, not generating downscaled options"""
+        Now includes resolution testing for cameras that support multiple resolutions"""
         try:
             # Get camera capabilities
             capabilities = self.camera_capabilities
             autofocus_supported = capabilities['autofocus_supported']
             default_params = capabilities['default_params']
+            supported_resolutions = capabilities['supported_resolutions']
+            resolution_testing_enabled = capabilities['resolution_testing_enabled']
             
             print(f"Detected camera capabilities:")
             print(f"Default Resolution: {default_params['resolution'][0]}x{default_params['resolution'][1]}")
             print(f"Default Frame Rate: {default_params['frame_rate']:.1f}fps")
             print(f"Default Autofocus: {'On' if default_params['autofocus'] else 'Off'}")
             print(f"Autofocus Supported: {'Yes' if autofocus_supported else 'No'}")
+            print(f"Resolution Testing: {'Enabled' if resolution_testing_enabled else 'Disabled'}")
+            print(f"Supported Resolutions: {len(supported_resolutions)}")
             
-            # Only use camera's default resolution
-            resolutions = [default_params['resolution']]
+            # Resolution options based on camera support
+            if resolution_testing_enabled:
+                # Use all supported resolutions for testing
+                resolutions = supported_resolutions
+                print(f"Using {len(resolutions)} resolution variants for testing")
+                for i, res in enumerate(resolutions):
+                    print(f"  {i+1}. {res[0]}x{res[1]}")
+            else:
+                # Only use camera's default resolution
+                resolutions = [default_params['resolution']]
+                print("Using only default resolution (camera doesn't support multiple resolutions)")
             
             # Only use camera's default frame rate
             frame_rates = [default_params['frame_rate']]
@@ -84,22 +97,27 @@ class GazeTrackingExperiment:
             test_conditions = []
             test_id = 1
             
-            for autofocus in autofocus_options:
-                for points in calibration_points:
-                    condition = {
-                        'test_id': f"T{test_id:02d}",
-                        'resolution': resolutions[0],
-                        'frame_rate': frame_rates[0],
-                        'autofocus': autofocus,
-                        'calibration_points': points
-                    }
-                    test_conditions.append(condition)
-                    test_id += 1
+            for resolution in resolutions:
+                for autofocus in autofocus_options:
+                    for points in calibration_points:
+                        condition = {
+                            'test_id': f"T{test_id:02d}",
+                            'resolution': resolution,
+                            'frame_rate': frame_rates[0],
+                            'autofocus': autofocus,
+                            'calibration_points': points
+                        }
+                        test_conditions.append(condition)
+                        test_id += 1
             
-            print(f"Generated {len(test_conditions)} test conditions using only camera's default parameters")
-            print(f"Resolution: {resolutions[0][0]}x{resolutions[0][1]}")
-            print(f"Frame rate: {frame_rates[0]:.1f}fps")
-            print(f"Autofocus options: {len(autofocus_options)}")
+            print(f"Generated {len(test_conditions)} test conditions")
+            if resolution_testing_enabled:
+                print(f"Resolution variants: {len(resolutions)}")
+                print(f"Autofocus variants: {len(autofocus_options)}")
+                print(f"Calibration variants: {len(calibration_points)}")
+                print(f"Total combinations: {len(resolutions)} × {len(autofocus_options)} × {len(calibration_points)} = {len(test_conditions)}")
+            else:
+                print(f"Using conservative approach with default resolution only")
             
         except Exception as e:
             print(f"Warning: Could not generate test conditions based on camera capabilities: {e}")
@@ -110,10 +128,10 @@ class GazeTrackingExperiment:
     
     def _generate_fallback_conditions(self):
         """Generate fallback test conditions when camera detection fails
-        Only using camera's default parameters, not generating downscaled options"""
+        Uses conservative defaults but still allows for basic testing"""
         print("Camera detection failed, using conservative fallback configuration")
         
-        # Use only camera defaults for resolution and frame rate
+        # Use safe defaults for resolution and frame rate
         # This is the safest approach when camera detection fails
         fallback_resolution = (640, 480)  # Standard VGA as a safe default
         fallback_fps = 30               # Standard frame rate as a safe default
@@ -138,7 +156,8 @@ class GazeTrackingExperiment:
         
         print(f"Generated {len(test_conditions)} conservative fallback test conditions")
         print(f"Using safe defaults: Resolution {fallback_resolution[0]}x{fallback_resolution[1]}, {fallback_fps}fps")
-        print("Note: Using only camera defaults to ensure compatibility")
+        print("Note: Using only conservative defaults to ensure compatibility")
+        print("Resolution testing disabled in fallback mode")
         return test_conditions
     
     def _parse_resolution(self, res_str):
@@ -223,6 +242,82 @@ class GazeTrackingExperiment:
             'progress_percentage': (len(self.completed_conditions) / self.total_conditions * 100) if self.total_conditions > 0 else 0,
             'participant_directory': self.participant_dir
         }
+    
+    def get_experiment_configuration_summary(self):
+        """Get a comprehensive summary of the experiment configuration"""
+        capabilities = self.camera_capabilities
+        
+        # Calculate estimated duration (rough estimate)
+        # Assume ~2-3 minutes per test condition (calibration + testing)
+        estimated_duration_minutes = self.total_conditions * 2.5
+        
+        summary = {
+            'experiment_info': {
+                'participant_id': self.participant_id,
+                'total_test_conditions': self.total_conditions,
+                'estimated_duration_minutes': estimated_duration_minutes,
+                'estimated_duration_formatted': f"{int(estimated_duration_minutes // 60)}h {int(estimated_duration_minutes % 60)}m"
+            },
+            'camera_capabilities': {
+                'default_resolution': capabilities['default_params']['resolution'],
+                'default_fps': capabilities['default_params']['frame_rate'],
+                'autofocus_supported': capabilities['autofocus_supported'],
+                'resolution_testing_enabled': capabilities.get('resolution_testing_enabled', False),
+                'supported_resolutions': capabilities.get('supported_resolutions', [capabilities['default_params']['resolution']]),
+                'total_supported_resolutions': len(capabilities.get('supported_resolutions', []))
+            },
+            'test_variations': {
+                'resolution_variants': len(set(condition['resolution'] for condition in self.test_conditions)),
+                'autofocus_variants': len(set(condition['autofocus'] for condition in self.test_conditions)),
+                'calibration_variants': len(set(condition['calibration_points'] for condition in self.test_conditions)),
+            },
+            'progress': {
+                'completed_conditions': len(self.completed_conditions),
+                'remaining_conditions': self.total_conditions - len(self.completed_conditions),
+                'progress_percentage': (len(self.completed_conditions) / self.total_conditions * 100) if self.total_conditions > 0 else 0
+            }
+        }
+        
+        return summary
+    
+    def print_experiment_configuration(self):
+        """Print a user-friendly summary of the experiment configuration"""
+        summary = self.get_experiment_configuration_summary()
+        
+        print("\n" + "="*60)
+        print("GAZE TRACKING EXPERIMENT CONFIGURATION")
+        print("="*60)
+        
+        print(f"Participant ID: {summary['experiment_info']['participant_id']}")
+        print(f"Total Test Conditions: {summary['experiment_info']['total_test_conditions']}")
+        print(f"Estimated Duration: {summary['experiment_info']['estimated_duration_formatted']}")
+        
+        print("\nCamera Configuration:")
+        cam_info = summary['camera_capabilities']
+        print(f"  Default Resolution: {cam_info['default_resolution'][0]}x{cam_info['default_resolution'][1]}")
+        print(f"  Frame Rate: {cam_info['default_fps']:.1f} fps")
+        print(f"  Autofocus Support: {'Yes' if cam_info['autofocus_supported'] else 'No'}")
+        print(f"  Resolution Testing: {'Enabled' if cam_info['resolution_testing_enabled'] else 'Disabled'}")
+        
+        if cam_info['resolution_testing_enabled']:
+            print(f"  Supported Resolutions ({cam_info['total_supported_resolutions']}):")
+            for i, res in enumerate(cam_info['supported_resolutions'], 1):
+                print(f"    {i}. {res[0]}x{res[1]}")
+        
+        print("\nTest Variations:")
+        variations = summary['test_variations']
+        print(f"  Resolution Variants: {variations['resolution_variants']}")
+        print(f"  Autofocus Variants: {variations['autofocus_variants']}")
+        print(f"  Calibration Point Variants: {variations['calibration_variants']}")
+        
+        if summary['progress']['completed_conditions'] > 0:
+            print("\nProgress:")
+            progress = summary['progress']
+            print(f"  Completed: {progress['completed_conditions']}/{summary['experiment_info']['total_test_conditions']}")
+            print(f"  Remaining: {progress['remaining_conditions']}")
+            print(f"  Progress: {progress['progress_percentage']:.1f}%")
+        
+        print("="*60)
         
     def get_camera_capabilities(self):
         """Detect actual camera capabilities and supported configurations"""
@@ -254,16 +349,82 @@ class GazeTrackingExperiment:
             # Restore original setting
             cap.set(cv2.CAP_PROP_AUTOFOCUS, original_af)
         
+        # Test supported resolutions
+        supported_resolutions = self._test_supported_resolutions(cap, default_params['resolution'])
+        
         cap.release()
         
         capabilities = {
             'max_resolution': (max_width, max_height),
             'max_fps': max_fps,
             'autofocus_supported': autofocus_supported,
-            'default_params': default_params
+            'default_params': default_params,
+            'supported_resolutions': supported_resolutions,
+            'resolution_testing_enabled': len(supported_resolutions) > 1
         }
         
         return capabilities
+    
+    def _test_supported_resolutions(self, cap, default_resolution):
+        """Test which resolutions the camera actually supports"""
+        print("Testing camera resolution capabilities...")
+        
+        # Common resolutions to test (in descending order of quality)
+        test_resolutions = [
+            (1920, 1080),  # 1080p
+            (1280, 720),   # 720p
+            (960, 540),    # qHD
+            (640, 480),    # VGA
+            (320, 240),    # QVGA
+        ]
+        
+        supported_resolutions = []
+        original_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        original_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        
+        # Always include the default resolution first
+        supported_resolutions.append(default_resolution)
+        
+        for width, height in test_resolutions:
+            # Skip if this is the default resolution (already added)
+            if (width, height) == default_resolution:
+                continue
+                
+            # Skip if resolution is higher than camera's default (likely unsupported)
+            if width > default_resolution[0] or height > default_resolution[1]:
+                continue
+            
+            try:
+                # Try to set the resolution
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                
+                # Check if the camera actually accepted the resolution
+                actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                
+                # Consider it supported if we get exactly what we asked for
+                # or if we get a reasonable approximation (within 10% tolerance)
+                width_diff = abs(actual_width - width) / width
+                height_diff = abs(actual_height - height) / height
+                
+                if width_diff <= 0.1 and height_diff <= 0.1:
+                    resolution = (actual_width, actual_height)
+                    if resolution not in supported_resolutions:
+                        supported_resolutions.append(resolution)
+                        print(f"  ✓ Resolution {width}x{height} supported (actual: {actual_width}x{actual_height})")
+                else:
+                    print(f"  ✗ Resolution {width}x{height} not supported (got: {actual_width}x{actual_height})")
+                    
+            except Exception as e:
+                print(f"  ✗ Resolution {width}x{height} failed: {e}")
+        
+        # Restore original resolution
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, original_width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, original_height)
+        
+        print(f"Camera supports {len(supported_resolutions)} resolutions: {supported_resolutions}")
+        return supported_resolutions
     
     def get_default_camera_parameters(self):
         """Get the default camera parameters without setting anything"""
@@ -1826,6 +1987,7 @@ def main():
     print("GAZE TRACKING EXPERIMENT")
     print("="*60)
     print("This program tests gaze tracking performance under different camera settings.")
+    print("Now includes automatic resolution testing for compatible cameras!")
     
     # Check for required files
     if not os.path.exists("shape_predictor_68_face_landmarks.dat"):
@@ -1839,7 +2001,7 @@ def main():
     base_dir = "experiment_data"
     os.makedirs(base_dir, exist_ok=True)
     
-    # Detect default camera parameters for information
+    # Detect camera capabilities for information
     try:
         print("\nDetecting camera capabilities...")
         temp_experiment = GazeTrackingExperiment("temp")
@@ -1852,6 +2014,31 @@ def main():
         print(f"- Default Resolution: {camera_capabilities['default_params']['resolution'][0]}x{camera_capabilities['default_params']['resolution'][1]}")
         print(f"- Default Frame Rate: {camera_capabilities['default_params']['frame_rate']:.1f}fps")
         print(f"- Default Autofocus: {'On' if camera_capabilities['default_params']['autofocus'] else 'Off'}")
+        
+        # Show resolution testing status
+        resolution_testing = camera_capabilities.get('resolution_testing_enabled', False)
+        supported_resolutions = camera_capabilities.get('supported_resolutions', [])
+        
+        print(f"\nResolution Testing:")
+        print(f"- Status: {'Enabled' if resolution_testing else 'Disabled'}")
+        print(f"- Supported Resolutions: {len(supported_resolutions)}")
+        
+        if resolution_testing and len(supported_resolutions) > 1:
+            print("- Available resolutions for testing:")
+            for i, res in enumerate(supported_resolutions, 1):
+                print(f"    {i}. {res[0]}x{res[1]}")
+            
+            # Show estimated test conditions
+            estimated_conditions = len(supported_resolutions) * (2 if camera_capabilities['autofocus_supported'] else 1) * 3
+            estimated_duration = estimated_conditions * 2.5
+            print(f"\nEstimated Test Conditions: {estimated_conditions}")
+            print(f"Estimated Duration: {int(estimated_duration // 60)}h {int(estimated_duration % 60)}m")
+        else:
+            print("- Using default resolution only (conservative mode)")
+            estimated_conditions = (2 if camera_capabilities['autofocus_supported'] else 1) * 3
+            estimated_duration = estimated_conditions * 2.5
+            print(f"\nEstimated Test Conditions: {estimated_conditions}")
+            print(f"Estimated Duration: {int(estimated_duration // 60)}h {int(estimated_duration % 60)}m")
         
         # Clean up temporary experiment
         import shutil
@@ -1879,13 +2066,27 @@ def main():
             participant_id = GazeTrackingExperiment.create_new_participant(base_dir)
             if participant_id:
                 experiment = GazeTrackingExperiment(participant_id, base_dir)
-                experiment.run_full_experiment()
+                # Show experiment configuration before starting
+                experiment.print_experiment_configuration()
+                
+                confirm = input("\nProceed with this configuration? (y/n): ").strip().lower()
+                if confirm == 'y':
+                    experiment.run_full_experiment()
+                else:
+                    print("Experiment cancelled.")
         
         elif choice == '2':
             participant_id = GazeTrackingExperiment.continue_experiment(base_dir)
             if participant_id:
                 experiment = GazeTrackingExperiment(participant_id, base_dir)
-                experiment.run_full_experiment()
+                # Show current configuration and progress
+                experiment.print_experiment_configuration()
+                
+                confirm = input("\nContinue with this experiment? (y/n): ").strip().lower()
+                if confirm == 'y':
+                    experiment.run_full_experiment()
+                else:
+                    print("Experiment cancelled.")
         
         elif choice == '3':
             GazeTrackingExperiment.view_participant_info(base_dir)
