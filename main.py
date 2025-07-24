@@ -783,7 +783,7 @@ class GazeTrackingExperiment:
         
         return "Unknown"
     
-    def run_validation(self, cap, validation_points):
+    def run_validation(self, cap, validation_points, cal_data):
         """Run validation phase - captures when gaze is detected"""
         print("Starting validation phase")
         print("Instructions: Look at each red circle")
@@ -1070,7 +1070,7 @@ class GazeTrackingExperiment:
             calibration_time = time.time() - start_time
             
             # Run validation
-            val_data = self.run_validation(cap, val_points)
+            val_data = self.run_validation(cap, val_points, cal_data)
             
             # Calculate metrics
             if val_data:
